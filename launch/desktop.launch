@@ -1,7 +1,7 @@
 <launch>
 
-  <arg name="start_hydra" default="true" />
-  <arg name="rviz_args" value="-d $(find pr2_surrogate)/config/pr2_teleop.rviz" />
+  <arg name="start_hydra" default="false" />
+  <arg name="rviz_args" value="-d $(find pr2_surrogate)/config/ubr1_teleop.rviz" />
   <arg name="razer_pos" value="1.2 0 -0.3" />
   <arg name="audio" default="false"/>
 
