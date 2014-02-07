@@ -36,7 +36,7 @@
 
 #include <ros/ros.h>
 
-#include <pr2_controllers_msgs/PointHeadAction.h>
+#include <control_msgs/PointHeadAction.h>
 
 #include <actionlib/client/simple_action_client.h>
 
@@ -50,14 +50,14 @@ public:
 
   void joyCb( sensor_msgs::JoyConstPtr joy_msg );
 
-  typedef actionlib::SimpleActionClient<pr2_controllers_msgs::PointHeadAction> PointHeadActionClient;
+  typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointHeadActionClient;
   PointHeadActionClient point_head_action_client_;
 
   ros::Time last_update_time_;
   ros::NodeHandle nh_;
   ros::Subscriber joy_sub_;
 
-  pr2_controllers_msgs::PointHeadGoal point_head_goal_;
+  control_msgs::PointHeadGoal point_head_goal_;
 
   double update_freq_;
 

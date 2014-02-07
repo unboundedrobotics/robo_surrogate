@@ -53,7 +53,7 @@ HeadPointer::HeadPointer( ros::NodeHandle pnh, std::string action_topic ) :
 
   point_head_goal_.max_velocity = 1.0;
 
-  pnh.param<double>( "update_freq", update_freq_, 0.1 );
+  pnh.param<double>( "update_freq", update_freq_, 0.03 );
 }
 
 HeadPointer::~HeadPointer()

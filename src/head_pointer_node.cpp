@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "head_pointer");
     ros::NodeHandle nh, pnh("~");
 
-    HeadPointer head_pointer( pnh, "head_traj_controller/point_head_action" );
+    HeadPointer head_pointer( pnh, "head_controller/point_head" );
 
     ros::spin();
     return 0;

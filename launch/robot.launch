@@ -4,30 +4,15 @@
 
   <remap from="joy" to="hydra_joy" />
 
-  <include file="$(find pr2_teleop)/teleop_joystick.launch"/>
-
-  <!-- <include file="$(find pr2_surrogate)/launch/cart_controllers.launch"/> -->
-  <include file="$(find pr2_surrogate)/launch/c_jt.launch"/>
-
-  <include file="$(find pr2_surrogate)/launch/terminator_eye.launch"/>
-
-  <include file="$(find pr2_surrogate)/launch/openni_head.launch"/>
-
   <include file="$(find pr2_surrogate)/launch/head_pointer.launch"/>
 
   <include file="$(find pr2_surrogate)/launch/arm_mover.launch">
-    <arg name="command_topic" value="l_cart/command_pose"/>
-    <arg name="tracked_frame" value="hydra_left_pivot"/>
-    <arg name="deadman_button" default="0"/>
-  </include>
-
-  <include file="$(find pr2_surrogate)/launch/arm_mover.launch">
-    <arg name="command_topic" value="r_cart/command_pose"/>
+    <arg name="command_topic" value="arm_controller/cartesian_pose/command"/>
     <arg name="tracked_frame" value="hydra_right_pivot"/>
     <arg name="deadman_button" default="3"/>
   </include>
 
-  <group if="$(arg audio)">
+  <!-- TODO Needs update group if="$(arg audio)">
     <node name="pr2_audio_capture" pkg="audio_capture" type="audio_capture" output="screen">
       <param name="bitrate" value="40"/>
       <remap from="audio" to="pr2_audio"/>
@@ -37,6 +22,6 @@
       <param name="dst" value="alsasink"/>
       <remap from="audio" to="desktop_audio"/>
     </node>
-  </group>
+  </group-->
 
 </launch>
