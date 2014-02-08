@@ -2,14 +2,16 @@
 
   <arg name="audio" default="false"/>
 
+  <!-- do not have hydra just yet
   <remap from="joy" to="hydra_joy" />
+  -->
 
   <include file="$(find pr2_surrogate)/launch/head_pointer.launch"/>
 
   <include file="$(find pr2_surrogate)/launch/arm_mover.launch">
     <arg name="command_topic" value="arm_controller/cartesian_pose/command"/>
     <arg name="tracked_frame" value="hydra_right_pivot"/>
-    <arg name="deadman_button" default="3"/>
+    <arg name="deadman_button" default="10"/> <!-- use 3 for hyrdra?-->
   </include>
 
   <!-- TODO Needs update group if="$(arg audio)">
