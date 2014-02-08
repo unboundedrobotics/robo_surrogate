@@ -59,7 +59,7 @@ public:
 
   control_msgs::PointHeadGoal point_head_goal_;
 
-  double update_freq_;
+  double update_period_;
 
   int deadman_button_;
 };
