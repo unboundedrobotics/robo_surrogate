@@ -31,46 +31,52 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-
 #include "arm_mover.h"
-
 #include <geometry_msgs/PoseStamped.h>
 
-ArmMover::ArmMover( ros::NodeHandle pnh )
+ArmMover::ArmMover(ros::NodeHandle pnh)
 {
-  joy_sub_ = nh_.subscribe<sensor_msgs::Joy>( "joy", 1, boost::bind(&ArmMover::joyCb, this, _1) );
+  pnh.param<std::string>( "tracked_frame", pose_msg_.header.frame_id, "hydra_right_pivot");
+  pnh.param<int>( "deadman_button", deadman_button_, 0);
+  pnh.param<double>( "update_freq", update_freq_, 0.1);
 
-  command_pub_ = nh_.advertise<geometry_msgs::PoseStamped>( "command", 1 );
-
-  pnh.param<std::string>( "tracked_frame", pose_msg_.header.frame_id, "" );
-
-  pnh.param<int>( "deadman_button", deadman_button_, 0 );
-
-  pnh.param<double>( "update_freq", update_freq_, 0.1 );
+  joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 1, boost::bind(&ArmMover::joyCb, this, _1));
+  command_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("command", 1);
 }
 
 ArmMover::~ArmMover()
 {
 }
 
-void ArmMover::joyCb( sensor_msgs::JoyConstPtr joy_msg )
+void ArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
 {
-  if ( ros::Time::now() - last_update_time_ < ros::Duration(update_freq_) )
+  if (ros::Time::now() - last_update_time_ < ros::Duration(update_freq_))
   {
     return;
   }
 
-  if ( joy_msg->buttons.size() <= deadman_button_  )
+  if (joy_msg->buttons.size() <= deadman_button_)
   {
     ROS_ERROR_ONCE("Button index for deadman switch is out of bounds!");
     return;
   }
 
-  if ( joy_msg->buttons.at(deadman_button_) )
+  if (joy_msg->buttons.at(deadman_button_))
   {
     last_update_time_ = ros::Time::now();
     pose_msg_.header.stamp = ros::Time::now();
     pose_msg_.pose.orientation.w = 1;
-    command_pub_.publish( pose_msg_ );
+    command_pub_.publish(pose_msg_);
   }
+}
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "arm_mover");
+  ros::NodeHandle pnh("~");
+
+  ArmMover arm_mover(pnh);
+
+  ros::spin();
+  return 0;
 }

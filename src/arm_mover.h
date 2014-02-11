@@ -31,22 +31,22 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-#ifndef ARM_MOVER_H_
-#define ARM_MOVER_H_
+#ifndef ROBO_SURROGATE_ARM_MOVER_H_
+#define ROBO_SURROGATE_ARM_MOVER_H_
 
 #include <ros/ros.h>
 
-#include <sensor_msgs/Joy.h>
-
 #include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/Joy.h>
 
 class ArmMover
 {
 public:
-  ArmMover( ros::NodeHandle pnh );
+  ArmMover(ros::NodeHandle pnh);
   virtual ~ArmMover();
 
-  void joyCb( sensor_msgs::JoyConstPtr joy_msg );
+private:
+  void joyCb(sensor_msgs::JoyConstPtr joy_msg);
 
   ros::Time last_update_time_;
   ros::NodeHandle nh_;
@@ -56,9 +56,7 @@ public:
   geometry_msgs::PoseStamped pose_msg_;
 
   double update_freq_;
-
   int deadman_button_;
 };
 
-
-#endif /* ARM_MOVER_H_ */
+#endif // ROBO_SURROGATE_ARM_MOVER_H_

@@ -31,38 +31,36 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-#ifndef HEAD_POINTER_H_
-#define HEAD_POINTER_H_
+#ifndef ROBO_SURROGATE_HEAD_POINTER_H_
+#define ROBO_SURROGATE_HEAD_POINTER_H_
 
 #include <ros/ros.h>
 
 #include <control_msgs/PointHeadAction.h>
+#include <sensor_msgs/Joy.h>
 
 #include <actionlib/client/simple_action_client.h>
 
-#include <sensor_msgs/Joy.h>
-
 class HeadPointer
 {
+  typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointHeadActionClient;
+
 public:
   HeadPointer( ros::NodeHandle pnh, std::string action_topic );
   virtual ~HeadPointer();
 
+private:
   void joyCb( sensor_msgs::JoyConstPtr joy_msg );
 
-  typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointHeadActionClient;
   PointHeadActionClient point_head_action_client_;
+  control_msgs::PointHeadGoal point_head_goal_;
 
   ros::Time last_update_time_;
   ros::NodeHandle nh_;
   ros::Subscriber joy_sub_;
 
-  control_msgs::PointHeadGoal point_head_goal_;
-
   double update_period_;
-
   int deadman_button_;
 };
 
-
-#endif /* HEAD_POINTER_H_ */
+#endif  // ROBO_SURROGATE_HEAD_POINTER_H_

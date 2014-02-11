@@ -1,5 +1,6 @@
 /*********************************************************************
 *
+*  Copyright (c) 2014, Unbounded Robotics, Inc.
 *  Copyright (c) 2013, Willow Garage, Inc.
 *  All rights reserved.
 *
@@ -31,16 +32,15 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-
 #include "head_pointer.h"
 
-HeadPointer::HeadPointer( ros::NodeHandle pnh, std::string action_topic ) :
+HeadPointer::HeadPointer(ros::NodeHandle pnh, std::string action_topic) :
   point_head_action_client_(action_topic, true)
 {
-  joy_sub_ = nh_.subscribe<sensor_msgs::Joy>( "joy", 1, boost::bind(&HeadPointer::joyCb, this, _1) );
-  pnh.param<std::string>( "tracked_frame", point_head_goal_.target.header.frame_id, "oculus" );
-  pnh.param<std::string>( "pointing_frame", point_head_goal_.pointing_frame, "head_mount_kinect_rgb_link" );
-  pnh.param<int>( "deadman_button", deadman_button_, 0 );
+  pnh.param<std::string>("tracked_frame", point_head_goal_.target.header.frame_id, "oculus" );
+  pnh.param<std::string>("pointing_frame", point_head_goal_.pointing_frame, "head_mount_kinect_rgb_link");
+  pnh.param<int>("deadman_button", deadman_button_, 0);
+  pnh.param<double>("update_period", update_period_, 0.05);
 
   point_head_goal_.pointing_axis.x = 1;
   point_head_goal_.pointing_axis.y = 0;
@@ -51,10 +51,9 @@ HeadPointer::HeadPointer( ros::NodeHandle pnh, std::string action_topic ) :
   point_head_goal_.target.point.z = 0;
 
   point_head_goal_.max_velocity = 1.0;
-
-  pnh.param<double>( "update_period", update_period_, 0.05 );
-
   point_head_goal_.min_duration = ros::Duration(update_period_ * 3);
+
+  joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 1, boost::bind(&HeadPointer::joyCb, this, _1));
 }
 
 HeadPointer::~HeadPointer()
@@ -63,20 +62,31 @@ HeadPointer::~HeadPointer()
 
 void HeadPointer::joyCb( sensor_msgs::JoyConstPtr joy_msg )
 {
-  if ( ros::Time::now() - last_update_time_ < ros::Duration(update_period_) )
+  if (ros::Time::now() - last_update_time_ < ros::Duration(update_period_))
   {
     return;
   }
 
-  if ( joy_msg->buttons.size() <= deadman_button_  )
+  if (joy_msg->buttons.size() <= deadman_button_)
   {
     ROS_ERROR_ONCE("Button index for deadman switch is out of bounds!");
     return;
   }
 
-  if ( joy_msg->buttons.at(deadman_button_) )
+  if (joy_msg->buttons.at(deadman_button_))
   {
     last_update_time_ = ros::Time::now();
-    point_head_action_client_.sendGoal( point_head_goal_ );
+    point_head_action_client_.sendGoal(point_head_goal_);
   }
+}
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "head_pointer");
+  ros::NodeHandle pnh("~");
+
+  HeadPointer head_pointer(pnh, "head_controller/point_head");
+
+  ros::spin();
+  return 0;
 }
