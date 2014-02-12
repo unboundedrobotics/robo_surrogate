@@ -2,7 +2,7 @@
 
   <arg name="start_hydra" default="true" />
   <arg name="rviz_args" value="-d $(find robo_surrogate)/config/ubr1_teleop.rviz" />
-  <arg name="razer_pos" value="1.2 0 -0.3" />
+  <arg name="razer_pos" value="1.0 0 0.2" />
 
   <include if="$(arg start_hydra)" file="$(find razer_hydra)/launch/hydra.launch">
     <arg name="publish_tf" value="true"/>
