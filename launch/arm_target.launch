@@ -1,0 +1,6 @@
+<launch>
+  <node ns="arm_target" name="state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" >
+    <param name="publish_frequency" value="50.0"/>
+    <param name="tf_prefix" value="arm_target"/>
+  </node>
+</launch>
