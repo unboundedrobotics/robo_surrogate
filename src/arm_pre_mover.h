@@ -45,7 +45,7 @@
 #include <kdl/chainjnttojacsolver.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <kdl/frames.hpp>
-
+#include <vector>
 
 class ArmPreMover
 {
@@ -64,8 +64,9 @@ private:
   ros::Subscriber joy_sub_;
   ros::Subscriber joint_states_sub_;
   ros::Publisher target_joint_states_pub_;
+  ros::Publisher follow_trajectory_goal_pub_;
 
-  sensor_msgs::JointState current_joint_states_;
+  std::vector<double> current_joint_positions_;
   sensor_msgs::JointState target_joint_states_;
   
   KDL::Chain kdl_chain_;

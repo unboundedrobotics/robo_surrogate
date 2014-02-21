@@ -39,6 +39,9 @@
 #include <urdf/model.h>
 #include <kdl_parser/kdl_parser.hpp>
 
+#include <control_msgs/FollowJointTrajectoryActionGoal.h>
+#include <trajectory_msgs/JointTrajectory.h>
+
 
 ArmPreMover::ArmPreMover(ros::NodeHandle nh)
 {
@@ -86,6 +89,7 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
   target_joint_states_.position.resize(num_joints);
   target_joint_states_.velocity.resize(num_joints);
   target_joint_states_.effort.resize(num_joints);
+  current_joint_positions_.resize(num_joints);  
 
   ROS_ERROR("kdl_chain_.getNrOfSegments() = %d", kdl_chain_.getNrOfSegments());
   ROS_ERROR("kdl_chain_.getNrOfJoints() = %d", kdl_chain_.getNrOfJoints());
@@ -114,6 +118,9 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
   joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 1, boost::bind(&ArmPreMover::joyCb, this, _1));
   joint_states_sub_ = nh_.subscribe<sensor_msgs::JointState>("joint_states", 1, boost::bind(&ArmPreMover::jointStateCb, this, _1));
   target_joint_states_pub_ = nh_.advertise<sensor_msgs::JointState>("arm_pre_mover/joint_states", 1);
+  follow_trajectory_goal_pub_ = nh_.advertise<control_msgs::FollowJointTrajectoryActionGoal>("/arm_controller/follow_joint_trajectory/goal", 1);
+
+
 
   ROS_ERROR_ONCE("ArmPreMover Complete");
   initialized_ = true;
@@ -126,15 +133,24 @@ ArmPreMover::~ArmPreMover()
 
 void ArmPreMover::jointStateCb(sensor_msgs::JointStateConstPtr msg)
 {
-  current_joint_states_ = *msg;
-  if (!have_current_joint_state_)
+  if (msg->position.size() != msg->name.size())
   {
-    ROS_ERROR("Current Joint %d", int(current_joint_states_.name.size()));
-    for (unsigned jj=0; jj<current_joint_states_.name.size(); ++jj)
+    ROS_WARN_THROTTLE(1.0, "Joint states names and positions are different sizes");
+    return;
+  }
+  
+  // Move button is not held-down reset target joint states to current joint states
+  for (unsigned ii=0; ii<target_joint_states_.name.size(); ++ii)
+  {
+    for (unsigned jj=0; jj<msg->name.size(); ++jj)
     {
-      ROS_ERROR("Current Joint %s", current_joint_states_.name[jj].c_str());
+      if (target_joint_states_.name[ii].compare(msg->name[jj]) == 0)
+      {
+        current_joint_positions_[ii] = msg->position[jj];
+      }
     }
   }
+
   have_current_joint_state_ = true;
   ROS_ERROR_ONCE("JointStateCB");
 }
@@ -166,40 +182,30 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     return;
   }
   
-  bool move_button_pressed = joy_msg->buttons.at(move_button_);
-  if (!move_button_pressed)
-  {
-    ROS_ERROR_ONCE("Move button not pressed");
-    // It is possible that joint states message was inconsistant.
-    if (current_joint_states_.position.size() != current_joint_states_.name.size())
-    {
-      ROS_WARN_THROTTLE(1.0, "Joint states names and positions are different sizes");
-      return;
-    }
+  bool move1_button_pressed = joy_msg->buttons.at(move_button_);
+  bool move2_button_pressed = joy_msg->buttons.at(9);
 
-    // Move button is not held-down reset target joint states to current joint states
-    for (unsigned ii=0; ii<target_joint_states_.name.size(); ++ii)
-    {
-      for (unsigned jj=0; jj<current_joint_states_.name.size(); ++jj)
-      {
-        if (target_joint_states_.name[ii].compare(current_joint_states_.name[jj]) == 0)
-        {
-          target_joint_states_.position[ii] = current_joint_states_.position[jj];
-        }
-      }
-    }
+  if (!move1_button_pressed && !move2_button_pressed)
+  {
+    target_joint_states_.position = current_joint_positions_;
   }
   else // move button is pressed
   {
     // Move button is held down move target joints states using jacobian
     KDL::Twist twist;
-    twist(0) = joy_msg->axes.at(3); //x
-    twist(1) = joy_msg->axes.at(2); //y
-    twist(2) = joy_msg->axes.at(1); //z
-    twist(3) = 0.0;
-    twist(4) = 0.0;
-    twist(5) = 0.0;
 
+    if (move1_button_pressed)
+    {
+      twist(0) = joy_msg->axes.at(3); //x
+      twist(1) = joy_msg->axes.at(2); //y
+      twist(2) = joy_msg->axes.at(1); //z
+    }
+    else
+    {
+      twist(3) = joy_msg->axes.at(2); //right joy side -> rotation around x
+      twist(4) = joy_msg->axes.at(3); //right joy forward -> rotation around y
+      twist(5) = joy_msg->axes.at(0); //left joy side -> rotation around z
+    }
 
     unsigned num_joints = target_joint_states_.position.size();
     for (unsigned ii = 0; ii < num_joints; ++ii)
@@ -239,12 +245,33 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
 
   }
 
+  bool execute_button_pressed =  joy_msg->buttons.at(execute_button_);
+  
 
   // If enough time has passed, send update
   if ( (now - last_update_time_) > ros::Duration(update_period_) )
   {
     target_joint_states_.header.stamp = now;
     target_joint_states_pub_.publish(target_joint_states_);
+
+    if (execute_button_pressed)
+    {
+      // Send joint trajectory action
+
+      control_msgs::FollowJointTrajectoryActionGoal action_goal;
+      control_msgs::FollowJointTrajectoryGoal &goal(action_goal.goal);
+      trajectory_msgs::JointTrajectory &traj(goal.trajectory);
+      traj.header.stamp = now;
+      traj.joint_names = target_joint_states_.name;
+      traj.points.resize(1);
+      //traj.points[0].positions = current_joint_positions_;
+      traj.points[0].positions = target_joint_states_.position;
+      traj.points[0].time_from_start = ros::Duration(1.0); // TODO calculate this based on max distance traveled?
+
+      
+      follow_trajectory_goal_pub_.publish(action_goal);
+    }
+
     last_update_time_ = now;
   }
     
