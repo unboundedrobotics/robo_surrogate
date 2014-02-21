@@ -80,12 +80,14 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
     return;
   }
 
-  jnt_to_pose_solver_.reset(new KDL::ChainFkSolverPos_recursive(kdl_chain_));
-  jac_solver_.reset(new KDL::ChainJntToJacSolver(kdl_chain_));
+  //jnt_to_pose_solver_.reset(new KDL::ChainFkSolverPos_recursive(kdl_chain_));
+  //jac_solver_.reset(new KDL::ChainJntToJacSolver(kdl_chain_));
+  solver_.reset(new KDL::ChainIkSolverVel_wdls(kdl_chain_)  );
   //jnt_delta_.resize(kdl_chain_.getNrOfJoints());
   unsigned num_joints = kdl_chain_.getNrOfJoints();
   jacobian_.resize(num_joints);
   jnt_pos_.resize(num_joints);
+  jnt_vel_.resize(num_joints);
   target_joint_states_.position.resize(num_joints);
   target_joint_states_.velocity.resize(num_joints);
   target_joint_states_.effort.resize(num_joints);
@@ -194,17 +196,19 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     // Move button is held down move target joints states using jacobian
     KDL::Twist twist;
 
+    double scale = (now - last_joy_update_time_).toSec() * 1.0;
+
     if (move1_button_pressed)
     {
-      twist(0) = joy_msg->axes.at(3); //x
-      twist(1) = joy_msg->axes.at(2); //y
-      twist(2) = joy_msg->axes.at(1); //z
+      twist(0) = joy_msg->axes.at(3) * scale; //x
+      twist(1) = joy_msg->axes.at(2) * scale; //y
+      twist(2) = joy_msg->axes.at(1) * scale; //z
     }
     else
     {
-      twist(3) = joy_msg->axes.at(2); //right joy side -> rotation around x
-      twist(4) = joy_msg->axes.at(3); //right joy forward -> rotation around y
-      twist(5) = joy_msg->axes.at(0); //left joy side -> rotation around z
+      twist(3) = joy_msg->axes.at(2) * scale; //right joy side -> rotation around x
+      twist(4) = joy_msg->axes.at(3) * scale; //right joy forward -> rotation around y
+      twist(5) = joy_msg->axes.at(0) * scale; //left joy side -> rotation around z
     }
 
     unsigned num_joints = target_joint_states_.position.size();
@@ -213,11 +217,23 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
       jnt_pos_(ii) = target_joint_states_.position[ii];
     }
 
-    jac_solver_->JntToJac(jnt_pos_, jacobian_);
-    
+
+    if (solver_->CartToJnt(jnt_pos_, twist, jnt_vel_) < 0)
+    {
+      ROS_ERROR_THROTTLE(1.0, "KDL Cartesian Velocity Sovler Failed");      
+    }
+    else 
+    {
+      for (unsigned ii = 0; ii < num_joints; ++ii)
+      {
+        target_joint_states_.position[ii] += jnt_vel_(ii); // * scale;
+      }
+    }
+
+    /* OLD Jacobian Transpose Solver
+    jac_solver_->JntToJac(jnt_pos_, jacobian_);    
     ROS_ERROR_ONCE("Jacobian size = %d,%d", jacobian_.rows(), jacobian_.columns());
     ROS_ERROR_ONCE("KDL chain size = %d", kdl_chain_.getNrOfJoints());
-
     if (jacobian_.columns() != kdl_chain_.getNrOfJoints())
     {
       ROS_ERROR_ONCE("Jacobian column count (%d) does not match number of joints in chain (%d)", 
@@ -229,10 +245,8 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
       ROS_ERROR_ONCE("Jacobian row count (%d) is not 6", jacobian_.rows());
       return;
     }
-
     double scale = (now - last_joy_update_time_).toSec() * 1.0;
-
-    /* Convert twist to joint velocities */
+    / Convert twist to joint velocities
     for (unsigned ii = 0; ii < num_joints; ++ii)
     {
       double delta = 0.0;
@@ -242,6 +256,7 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
       }
       target_joint_states_.position[ii] += delta * scale;
     }
+    */
 
   }
 

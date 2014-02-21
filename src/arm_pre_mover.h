@@ -44,6 +44,8 @@
 #include <kdl/chain.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/chainiksolvervel_wdls.hpp>
+
 #include <kdl/frames.hpp>
 #include <vector>
 
@@ -70,10 +72,12 @@ private:
   sensor_msgs::JointState target_joint_states_;
   
   KDL::Chain kdl_chain_;
-  boost::shared_ptr<KDL::ChainFkSolverPos> jnt_to_pose_solver_;
-  boost::shared_ptr<KDL::ChainJntToJacSolver> jac_solver_;
+  //boost::shared_ptr<KDL::ChainFkSolverPos> jnt_to_pose_solver_;
+  //boost::shared_ptr<KDL::ChainJntToJacSolver> jac_solver_;
+  boost::shared_ptr<KDL::ChainIkSolverVel_wdls> solver_;
   KDL::Jacobian jacobian_;
   KDL::JntArray jnt_pos_;
+  KDL::JntArray jnt_vel_;
 
   /// 
   double update_period_;
