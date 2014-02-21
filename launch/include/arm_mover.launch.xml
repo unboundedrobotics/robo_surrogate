@@ -4,7 +4,7 @@
   <arg name="tracked_frame"/>
   <arg name="deadman_button"/>
 
-  <node name="arm_mover_$(arg tracked_frame)" pkg="robo_surrogate" type="incremental_arm_mover" required="true" output="screen">
+  <node name="arm_mover_$(arg tracked_frame)" pkg="robo_surrogate" type="arm_pre_mover" required="true" output="screen">
     <param name="tracked_frame" value="$(arg tracked_frame)"/>
     <param name="update_freq" value="0.1"/>
     <param name="deadman_button" value="$(arg deadman_button)"/>

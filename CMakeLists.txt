@@ -12,6 +12,8 @@ find_package(catkin REQUIRED
     roscpp
     tf
     tf_conversions
+    urdf
+    kdl_parser
 )
 
 find_package(Boost REQUIRED COMPONENTS system)
@@ -63,6 +65,20 @@ target_link_libraries(incremental_arm_mover
 add_dependencies(incremental_arm_mover
   sensor_msgs_generate_messages_cpp
 )
+
+
+add_executable(arm_pre_mover
+  src/arm_pre_mover.cpp
+  )
+target_link_libraries(arm_pre_mover
+   ${catkin_LIBRARIES}
+   ${Boost_LIBRARIES}
+   ${orocos_kdl_LIBRARIES}
+)
+add_dependencies(arm_pre_mover
+  sensor_msgs_generate_messages_cpp
+)
+
 
 install(TARGETS head_pointer arm_mover incremental_arm_mover
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
