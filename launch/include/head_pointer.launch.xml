@@ -1,13 +1,14 @@
 <launch>
 
   <arg name="tracked_frame" default="oculus"/>
-  <arg name="deadman_button" default="10"/>
+  <arg name="deadman_button" default="11"/>
   
   <node name="head_pointer" pkg="robo_surrogate" type="head_pointer" required="true" output="screen">
     <param name="tracked_frame" value="$(arg tracked_frame)"/>
     <param name="pointing_frame" value="head_camera_rgb_frame"/>
     <param name="update_period" value="0.1"/>
     <param name="deadman_button" value="$(arg deadman_button)"/>
+    <remap from="joy" to="hydra_joy"/>
   </node>
 
 </launch>
