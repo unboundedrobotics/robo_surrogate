@@ -1,13 +1,18 @@
 <launch>
 
-  <remap from="joy" to="hydra_joy" />
+  <!-- Don't use hydra for now
+      <remap from="joy" to="hydra_joy" />
+  -->
 
   <include file="$(find robo_surrogate)/launch/include/head_pointer.launch.xml"/>
 
   <include file="$(find robo_surrogate)/launch/include/arm_mover.launch.xml">
     <arg name="command_topic" value="arm_controller/cartesian_pose/command"/>
     <arg name="tracked_frame" value="hydra_right_pivot"/>
-    <arg name="deadman_button" default="11"/> <!-- 11 is the right side top button -->
+
+    <!-- 11 is the right side top button on hydra -->
+    <!-- 0 is deadman on ps3 -->
+    <arg name="deadman_button" default="11"/> 
   </include>
 
 </launch>

@@ -16,6 +16,11 @@ find_package(catkin REQUIRED
     kdl_parser
 )
 
+add_message_files(FILES ArmMove.msg)
+generate_messages(DEPENDENCIES
+  geometry_msgs
+)
+
 find_package(Boost REQUIRED COMPONENTS system)
 
 catkin_package(
@@ -75,7 +80,22 @@ target_link_libraries(arm_pre_mover
    ${Boost_LIBRARIES}
    ${orocos_kdl_LIBRARIES}
 )
-add_dependencies(arm_pre_mover
+add_dependencies(arm_pre_mover 
+  robo_surrogate_generate_messages_cpp
+  sensor_msgs_generate_messages_cpp
+)
+
+
+add_executable(hydra_arm_mover 
+  src/hydra_arm_mover.cpp
+  )
+target_link_libraries(hydra_arm_mover
+   ${catkin_LIBRARIES}
+   ${Boost_LIBRARIES}
+   ${orocos_kdl_LIBRARIES}
+)
+add_dependencies(hydra_arm_mover
+  robo_surrogate_generate_messages_cpp
   sensor_msgs_generate_messages_cpp
 )
 
