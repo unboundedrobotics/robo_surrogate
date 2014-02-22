@@ -1,14 +1,16 @@
 <launch>
 
-  <arg name="command_topic"/>
-  <arg name="tracked_frame"/>
-  <arg name="deadman_button"/>
-
-  <node name="arm_mover_$(arg tracked_frame)" pkg="robo_surrogate" type="arm_pre_mover" required="true" output="screen">
-    <param name="tracked_frame" value="$(arg tracked_frame)"/>
-    <param name="update_freq" value="0.1"/>
-    <param name="deadman_button" value="$(arg deadman_button)"/>
-    <remap from="command" to="$(arg command_topic)"/>
+  <node name="arm_pre_mover" pkg="robo_surrogate" type="arm_pre_mover" required="true" output="screen">
+    <param name="update_period" value="0.1"/>
   </node>
+
+  <node ns="arm_pre_mover" name="state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" >
+    <param name="publish_frequency" value="50.0"/>
+    <param name="tf_prefix" value="arm_target"/>
+  </node>
+
+  <node ns="arm_target" name="torso_publisher" pkg="tf" type="static_transform_publisher" 
+	args="0 0 0 0 0 0 torso_lift_link arm_target/torso_lift_link 100"/>
+
 
 </launch>
