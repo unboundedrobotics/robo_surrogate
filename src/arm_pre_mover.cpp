@@ -118,6 +118,8 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
   target_joint_states_pub_ = nh_.advertise<sensor_msgs::JointState>("arm_pre_mover/joint_states", 1);
   follow_trajectory_goal_pub_ = nh_.advertise<control_msgs::FollowJointTrajectoryActionGoal>("/arm_controller/follow_joint_trajectory/goal", 1);
 
+  last_update_time_ = ros::Time(0.0);
+  last_move_update_time_ = ros::Time(0.0);
 
   ROS_ERROR_ONCE("ArmPreMover Complete");
   initialized_ = true;
@@ -135,6 +137,8 @@ void ArmPreMover::jointStateCb(sensor_msgs::JointStateConstPtr msg)
     ROS_WARN_THROTTLE(1.0, "Joint states names and positions are different sizes");
     return;
   }
+
+  // TODO put lock on this update
   
   // Move button is not held-down reset target joint states to current joint states
   for (unsigned ii=0; ii<target_joint_states_.name.size(); ++ii)
@@ -149,11 +153,13 @@ void ArmPreMover::jointStateCb(sensor_msgs::JointStateConstPtr msg)
   }
 
   have_current_joint_state_ = true;
-  ROS_ERROR_ONCE("JointStateCB");
+  ROS_ERROR_ONCE("JointStateCB (2)");
 }
 
 void ArmPreMover::moveCb(robo_surrogate::ArmMoveConstPtr move_msg)
 {
+  // TODO put lock on this update
+
   ROS_ERROR_ONCE("MoveCB");
 
   ros::Time now(ros::Time::now());
@@ -163,7 +169,7 @@ void ArmPreMover::moveCb(robo_surrogate::ArmMoveConstPtr move_msg)
     return;
   }
  
-  if (!move_msg->move)
+  if (!move_msg->move && !move_msg->deadman)
   {
     target_joint_states_.position = current_joint_positions_;
   }
@@ -222,28 +228,33 @@ void ArmPreMover::moveCb(robo_surrogate::ArmMoveConstPtr move_msg)
   {
     target_joint_states_.header.stamp = now;
     target_joint_states_pub_.publish(target_joint_states_);
+    ROS_ERROR_ONCE("PreMoverFirstUpdate");  
+
+    control_msgs::FollowJointTrajectoryActionGoal action_goal;
+    control_msgs::FollowJointTrajectoryGoal &goal(action_goal.goal);
+    trajectory_msgs::JointTrajectory &traj(goal.trajectory);
+    traj.header.stamp = now;
+    traj.joint_names = target_joint_states_.name;    
 
     if (move_msg->deadman)
     {
       // Send joint trajectory action
-
-      control_msgs::FollowJointTrajectoryActionGoal action_goal;
-      control_msgs::FollowJointTrajectoryGoal &goal(action_goal.goal);
-      trajectory_msgs::JointTrajectory &traj(goal.trajectory);
-      traj.header.stamp = now;
-      traj.joint_names = target_joint_states_.name;
       traj.points.resize(1);
       //traj.points[0].positions = current_joint_positions_;
       traj.points[0].positions = target_joint_states_.position;
-      traj.points[0].time_from_start = ros::Duration(1.0); // TODO calculate this based on max distance traveled?
-
-      
-      follow_trajectory_goal_pub_.publish(action_goal);
+      traj.points[0].time_from_start = ros::Duration(3*update_period_); // TODO calculate this based on max distance traveled?
     }
+    else 
+    {
+      traj.points.resize(0);
+      // an empty trajectory should cause trajectory follower to stop what it is doing
+    }
+    follow_trajectory_goal_pub_.publish(action_goal);      
 
     last_update_time_ = now;
   }
-    
+
+  ROS_ERROR_ONCE("PreMoverFirstComplete");
   last_move_update_time_ = now;
 }
 
@@ -251,7 +262,7 @@ void ArmPreMover::moveCb(robo_surrogate::ArmMoveConstPtr move_msg)
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "arm_mover");
+  ros::init(argc, argv, "arm_pre_mover");
   ros::NodeHandle pnh("");
 
   ArmPreMover arm_mover(pnh);
