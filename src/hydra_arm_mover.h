@@ -31,64 +31,48 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-#ifndef ROBO_SURROGATE_ARM_PRE_MOVER_H_
-#define ROBO_SURROGATE_ARM_PRE_MOVER_H_
+#ifndef ROBO_SURROGATE_HYDRA_ARM_MOVER_H_
+#define ROBO_SURROGATE_HYDRA_ARM_MOVER_H_
 
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <kdl/frames.hpp>
 #include <tf/transform_listener.h>
-#include <sensor_msgs/JointState.h>
-#include <robo_surrogate/ArmMove.h>
-//#include <geometry_msgs/PoseStamped.h>
 
-#include <kdl/chain.hpp>
-#include <kdl/chainjnttojacsolver.hpp>
-#include <kdl/chainfksolverpos_recursive.hpp>
-#include <kdl/chainiksolvervel_wdls.hpp>
 
-#include <kdl/frames.hpp>
-#include <vector>
-
-class ArmPreMover
+/**
+ * Uses razor hydra to generate twist commadns that are sent 
+ * to some a cartesian arm controller that uses the twist commands.
+ */
+class HydraArmMover
 {
 public:
-  ArmPreMover(ros::NodeHandle pnh);
-  virtual ~ArmPreMover();
+  HydraArmMover(ros::NodeHandle pnh);
+  virtual ~HydraArmMover();
 
 private:
-  void moveCb(robo_surrogate::ArmMoveConstPtr move_msg);
-  void jointStateCb(sensor_msgs::JointStateConstPtr msg);
-
-  ros::Time last_update_time_;
-  ros::Time last_move_update_time_;
+  void joyCb(sensor_msgs::JoyConstPtr joy_msg);
 
   ros::NodeHandle nh_;
-  ros::Subscriber joint_states_sub_;
 
-  /** Subscription to another node that generates twists + deadman/move inputs
-   * This node that this node will accumulate values and execute moves
-   * This allows different input devices (mouse, ps2, razor hydra) to move arm.
-   */
-  ros::Subscriber move_sub_;
+  ros::Publisher command_pub_;
+  ros::Subscriber joy_sub_;
 
-  ros::Publisher target_joint_states_pub_;
-  ros::Publisher follow_trajectory_goal_pub_;
+  std::string target_frame_id_;
+  std::string root_frame_id_;
 
-  std::vector<double> current_joint_positions_;
-  sensor_msgs::JointState target_joint_states_;
-  
-  KDL::Chain kdl_chain_;
-  boost::shared_ptr<KDL::ChainIkSolverVel_wdls> solver_;
-  KDL::Jacobian jacobian_;
-  KDL::JntArray jnt_pos_;
-  KDL::JntArray jnt_vel_;
+  KDL::Frame last_pose_;
 
-  /// 
+  tf::TransformListener tf_;
   double update_period_;
- 
-  bool initialized_;
-  bool have_current_joint_state_;
+
+  ros::Time last_update_time_;
+
+  /// index of button to used for moving gripper/arm
+  int move_button_;
+
+  /// index of button used for executing move
+  int deadman_button_;
 };
 
-#endif // ROBO_SURROGATE_ARM_PRE_MOVER_H_
+#endif // ROBO_SURROGATE_HYDRA_ARM_MOVER_H_

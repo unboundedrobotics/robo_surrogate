@@ -32,8 +32,6 @@
 *********************************************************************/
 
 #include "arm_pre_mover.h"
-//#include <geometry_msgs/PoseStamped.h>
-//#include <geometry_msgs/Twist.h>
 #include <tf_conversions/tf_kdl.h>
 #include <kdl/frames.hpp>
 #include <urdf/model.h>
@@ -52,8 +50,6 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
   std::string tip_link, root_link;
   nh_.param<std::string>("root_name", root_link, "torso_lift_link");
   nh_.param<std::string>("tip_name", tip_link, "gripper_link");
-  nh_.param<int>( "execute_button", execute_button_, 11);
-  nh_.param<int>( "move_button", move_button_, 8);
   nh_.param<double>( "update_period", update_period_, 0.1);
 
 
@@ -91,7 +87,7 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
   target_joint_states_.position.resize(num_joints);
   target_joint_states_.velocity.resize(num_joints);
   target_joint_states_.effort.resize(num_joints);
-  current_joint_positions_.resize(num_joints);  
+  current_joint_positions_.resize(num_joints);
 
   ROS_ERROR("kdl_chain_.getNrOfSegments() = %d", kdl_chain_.getNrOfSegments());
   ROS_ERROR("kdl_chain_.getNrOfJoints() = %d", kdl_chain_.getNrOfJoints());
@@ -117,11 +113,10 @@ ArmPreMover::ArmPreMover(ros::NodeHandle nh)
   }
 
 
-  joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("joy", 1, boost::bind(&ArmPreMover::joyCb, this, _1));
+  move_sub_ = nh_.subscribe<robo_surrogate::ArmMove>("move_command", 1, boost::bind(&ArmPreMover::moveCb, this, _1));
   joint_states_sub_ = nh_.subscribe<sensor_msgs::JointState>("joint_states", 1, boost::bind(&ArmPreMover::jointStateCb, this, _1));
   target_joint_states_pub_ = nh_.advertise<sensor_msgs::JointState>("arm_pre_mover/joint_states", 1);
   follow_trajectory_goal_pub_ = nh_.advertise<control_msgs::FollowJointTrajectoryActionGoal>("/arm_controller/follow_joint_trajectory/goal", 1);
-
 
 
   ROS_ERROR_ONCE("ArmPreMover Complete");
@@ -157,9 +152,9 @@ void ArmPreMover::jointStateCb(sensor_msgs::JointStateConstPtr msg)
   ROS_ERROR_ONCE("JointStateCB");
 }
 
-void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
+void ArmPreMover::moveCb(robo_surrogate::ArmMoveConstPtr move_msg)
 {
-  ROS_ERROR_ONCE("JoyCB");
+  ROS_ERROR_ONCE("MoveCB");
 
   ros::Time now(ros::Time::now());
 
@@ -167,58 +162,30 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   {
     return;
   }
-
-  if (joy_msg->buttons.size() <= move_button_)
-  {
-    ROS_ERROR_ONCE("Button index for move is out of bounds!");
-    return;
-  }
-  if (joy_msg->buttons.size() <= execute_button_)
-  {
-    ROS_ERROR_ONCE("Button index for execute is out of bounds!");
-    return;
-  }
-  if (joy_msg->axes.size() <= 3)
-  {
-    ROS_ERROR_ONCE("Joy d/n have enough axes!");
-    return;
-  }
-  
-  bool move1_button_pressed = joy_msg->buttons.at(move_button_);
-  bool move2_button_pressed = joy_msg->buttons.at(9);
-
-  if (!move1_button_pressed && !move2_button_pressed)
+ 
+  if (!move_msg->move)
   {
     target_joint_states_.position = current_joint_positions_;
   }
   else // move button is pressed
   {
     // Move button is held down move target joints states using jacobian
+
+    ROS_ERROR_ONCE("MovePressed");
+
     KDL::Twist twist;
-
-
-    double dt = (now - last_joy_update_time_).toSec();
-    double scale =  dt * 1.0;
-
-    if (move1_button_pressed)
-    {
-      twist(0) = joy_msg->axes.at(3) * scale; //x
-      twist(1) = joy_msg->axes.at(2) * scale; //y
-      twist(2) = joy_msg->axes.at(1) * scale; //z
-    }
-    else
-    {
-      twist(3) = joy_msg->axes.at(2) * scale; //right joy side -> rotation around x
-      twist(4) = joy_msg->axes.at(3) * scale; //right joy forward -> rotation around y
-      twist(5) = joy_msg->axes.at(0) * scale; //left joy side -> rotation around z
-    }
+    twist(0) = move_msg->twist.linear.x;
+    twist(1) = move_msg->twist.linear.y;
+    twist(2) = move_msg->twist.linear.z;
+    twist(3) = move_msg->twist.angular.x;
+    twist(4) = move_msg->twist.angular.y;
+    twist(5) = move_msg->twist.angular.z;
 
     unsigned num_joints = target_joint_states_.position.size();
     for (unsigned ii = 0; ii < num_joints; ++ii)
     {
       jnt_pos_(ii) = target_joint_states_.position[ii];
     }
-
 
     if (solver_->CartToJnt(jnt_pos_, twist, jnt_vel_) < 0)
     {
@@ -233,6 +200,7 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
         max_delta = std::max(std::abs(jnt_vel_(ii)), max_delta);
       }
 
+      double dt = (now - last_move_update_time_).toSec();
       double velocity_limit = 0.5;
       double delta_limit = velocity_limit * dt;
       double delta_scale = 1.0;
@@ -247,39 +215,7 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
         target_joint_states_.position[ii] += jnt_vel_(ii) * delta_scale;
       }
     }
-
-    /* OLD Jacobian Transpose Solver
-    jac_solver_->JntToJac(jnt_pos_, jacobian_);    
-    ROS_ERROR_ONCE("Jacobian size = %d,%d", jacobian_.rows(), jacobian_.columns());
-    ROS_ERROR_ONCE("KDL chain size = %d", kdl_chain_.getNrOfJoints());
-    if (jacobian_.columns() != kdl_chain_.getNrOfJoints())
-    {
-      ROS_ERROR_ONCE("Jacobian column count (%d) does not match number of joints in chain (%d)", 
-                     jacobian_.columns(), kdl_chain_.getNrOfJoints());
-      return;
-    }
-    if (jacobian_.rows() != 6)
-    {
-      ROS_ERROR_ONCE("Jacobian row count (%d) is not 6", jacobian_.rows());
-      return;
-    }
-    double scale = (now - last_joy_update_time_).toSec() * 1.0;
-    / Convert twist to joint velocities
-    for (unsigned ii = 0; ii < num_joints; ++ii)
-    {
-      double delta = 0.0;
-      for (unsigned jj = 0; jj < 6; ++jj)
-      {
-        delta += (jacobian_(jj,ii) * twist(jj));
-      }
-      target_joint_states_.position[ii] += delta * scale;
-    }
-    */
-
   }
-
-  bool execute_button_pressed =  joy_msg->buttons.at(execute_button_);
-  
 
   // If enough time has passed, send update
   if ( (now - last_update_time_) > ros::Duration(update_period_) )
@@ -287,7 +223,7 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     target_joint_states_.header.stamp = now;
     target_joint_states_pub_.publish(target_joint_states_);
 
-    if (execute_button_pressed)
+    if (move_msg->deadman)
     {
       // Send joint trajectory action
 
@@ -308,8 +244,7 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     last_update_time_ = now;
   }
     
-
-  last_joy_update_time_ = now;
+  last_move_update_time_ = now;
 }
 
 
