@@ -75,7 +75,7 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   }
 
   /* Need transform */
-  if (!tf_.waitForTransform(target_frame_id_, root_frame_id_, ros::Time::now(), ros::Duration(0.1)))
+  if (!tf_.waitForTransform(target_frame_id_, root_frame_id_, ros::Time::now(), ros::Duration(0.5)))
   {
     ROS_ERROR_STREAM_THROTTLE(1.0, "HydraArmMover: Unable to transform " 
                               << target_frame_id_ << " to " << root_frame_id_ << ".");
@@ -86,7 +86,7 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   tf::StampedTransform transform;
   geometry_msgs::PoseStamped stamped;
   stamped.pose.orientation.w = 1.0;
-  stamped.header.stamp = now - ros::Duration(0.1);
+  stamped.header.stamp = now - ros::Duration(0.2);
   stamped.header.frame_id = target_frame_id_;
   tf_.transformPose(root_frame_id_, stamped, stamped);
   tf::Stamped<tf::Pose> tf_pose_stamped;

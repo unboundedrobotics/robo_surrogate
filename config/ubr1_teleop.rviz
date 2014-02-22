@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotModel1
         - /RobotModel1/Links1
         - /DepthCloud1/Auto Size1
         - /DepthCloud1/Occlusion Compensation1
@@ -234,7 +233,7 @@ Visualization Manager:
       Decay Time: 0
       Depth Map Topic: /head_camera/depth_registered/image_raw
       Depth Map Transport Hint: compressedDepth
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -252,7 +251,7 @@ Visualization Manager:
       Topic Filter: true
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
