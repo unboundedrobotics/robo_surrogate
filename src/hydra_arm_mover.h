@@ -38,7 +38,8 @@
 #include <sensor_msgs/Joy.h>
 #include <kdl/frames.hpp>
 #include <tf/transform_listener.h>
-
+#include <control_msgs/GripperCommandAction.h>
+#include <actionlib/client/simple_action_client.h>
 
 /**
  * Uses razor hydra to generate twist commadns that are sent 
@@ -73,6 +74,20 @@ private:
 
   /// index of button used for executing move
   int deadman_button_;
+
+  typedef actionlib::SimpleActionClient<control_msgs::GripperCommandAction> GripperClient;
+  boost::shared_ptr< GripperClient > gripper_client_;
+
+  /// index of button to used for opening/closing gripper
+  int gripper_open_button_;
+  int gripper_close_button_;
+
+  double gripper_open_pos_;
+  double gripper_close_pos_;
+  double gripper_max_effort_;
+
+  bool gripper_opened_;
+  bool gripper_closed_;
 };
 
 #endif // ROBO_SURROGATE_HYDRA_ARM_MOVER_H_

@@ -43,7 +43,24 @@ HydraArmMover::HydraArmMover(ros::NodeHandle pnh)
   pnh.param<std::string>( "root_frame", root_frame_id_, "base_link");
   pnh.param<double>( "update_period", update_period_, 0.05);
   nh_.param<int>( "deadman_button", deadman_button_, 11); // right top trigger on hydra
-  nh_.param<int>( "move_button", move_button_, 9); // right botton trigger on hydra
+  nh_.param<int>( "move_button", move_button_, 9); // right bottom trigger on hydra
+  nh_.param<int>( "gripper_open_button", gripper_open_button_, 12); // right hydra button 4
+  nh_.param<int>( "gripper_close_button", gripper_close_button_, 14); // right hydra button 2
+
+  nh_.param("gripper_open_pos", gripper_open_pos_, 0.09);
+  nh_.param("gripper_close_pos", gripper_close_pos_, 0.0);
+  nh_.param("gripper_max_effort", gripper_max_effort_, 28.0);
+
+  // Gripper is neither opened nor closed to start with
+  gripper_opened_ = false;
+  gripper_closed_ = false;
+  
+  /* Gripper action setup */
+  gripper_client_.reset( new GripperClient("gripper_controller/gripper_action", true) );
+  if (!gripper_client_->waitForServer(ros::Duration(2.0)))
+  {
+      ROS_ERROR("gripper_controller/gripper_action may not be connected. Gripper may not move.");
+  }  
 
   joy_sub_ = nh_.subscribe<sensor_msgs::Joy>("hydra_joy", 1, boost::bind(&HydraArmMover::joyCb, this, _1));
   command_pub_ = nh_.advertise<robo_surrogate::ArmMove>("move_command", 1);
@@ -73,6 +90,17 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     ROS_ERROR_ONCE("Move button index is out of bounds!");
     return;
   }
+  if (joy_msg->buttons.size() <= gripper_open_button_)
+  {
+    ROS_ERROR_ONCE("Gripper op button index is out of bounds!");
+    return;
+  }
+  if (joy_msg->buttons.size() <= gripper_close_button_)
+  {
+    ROS_ERROR_ONCE("Gripper op button index is out of bounds!");
+    return;
+  }
+
 
   /* Need transform */
   if (!tf_.waitForTransform(target_frame_id_, root_frame_id_, ros::Time::now(), ros::Duration(0.5)))
@@ -98,7 +126,7 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
 
   robo_surrogate::ArmMove move;
   move.deadman = joy_msg->buttons.at(deadman_button_);
-  move.move = joy_msg->buttons.at(move_button_);
+  move.move = false; //joy_msg->buttons.at(move_button_);
   geometry_msgs::Twist &t(move.twist);
   t.linear.x = twist(0);
   t.linear.y = twist(1);
@@ -106,8 +134,27 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   t.angular.x = twist(3);
   t.angular.y = twist(4);
   t.angular.z = twist(5);
-  command_pub_.publish(move);
+  command_pub_.publish(move);    
 
+  if (joy_msg->buttons.at(gripper_open_button_) && !gripper_opened_)
+  {
+    control_msgs::GripperCommandGoal goal;
+    goal.command.position = gripper_open_pos_;
+    goal.command.max_effort = gripper_max_effort_;
+    gripper_client_->sendGoal(goal);
+    gripper_opened_ = true;
+    gripper_closed_ = false;
+  }
+  else if (joy_msg->buttons.at(gripper_close_button_) && !gripper_closed_)
+  {
+    control_msgs::GripperCommandGoal goal;
+    goal.command.position = gripper_close_pos_;
+    goal.command.max_effort = gripper_max_effort_;
+    gripper_client_->sendGoal(goal);
+    gripper_closed_ = true;
+    gripper_opened_ = false;
+  }
+  
   last_update_time_ = now;
   last_pose_ = pose;
 }
