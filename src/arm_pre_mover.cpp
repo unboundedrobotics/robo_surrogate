@@ -196,7 +196,9 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     // Move button is held down move target joints states using jacobian
     KDL::Twist twist;
 
-    double scale = (now - last_joy_update_time_).toSec() * 1.0;
+
+    double dt = (now - last_joy_update_time_).toSec();
+    double scale =  dt * 1.0;
 
     if (move1_button_pressed)
     {
@@ -220,13 +222,29 @@ void ArmPreMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
 
     if (solver_->CartToJnt(jnt_pos_, twist, jnt_vel_) < 0)
     {
-      ROS_ERROR_THROTTLE(1.0, "KDL Cartesian Velocity Sovler Failed");      
+      ROS_ERROR_THROTTLE(1.0, "KDL Cartesian Velocity Solver Failed");    
     }
     else 
     {
+      // If any joint movement is faster than max velocity, scale all joint movements back      
+      double max_delta = 0.0;
       for (unsigned ii = 0; ii < num_joints; ++ii)
       {
-        target_joint_states_.position[ii] += jnt_vel_(ii); // * scale;
+        max_delta = std::max(std::abs(jnt_vel_(ii)), max_delta);
+      }
+
+      double velocity_limit = 0.5;
+      double delta_limit = velocity_limit * dt;
+      double delta_scale = 1.0;
+      if (max_delta > delta_limit)
+      {
+        delta_scale = delta_limit / max_delta;
+        ROS_ERROR_THROTTLE(1.0, "Limiting Velocity");
+      }
+
+      for (unsigned ii = 0; ii < num_joints; ++ii)
+      {
+        target_joint_states_.position[ii] += jnt_vel_(ii) * delta_scale;
       }
     }
 
