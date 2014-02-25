@@ -32,6 +32,8 @@ catkin_package(
     roscpp
 )
 
+link_directories(${orocos_kdl_LIBRARY_DIRS}) # this is a hack, will eventually be unneeded once orocos-kdl is fixed
+
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${orocos_kdl_INCLUDE_DIRS}
