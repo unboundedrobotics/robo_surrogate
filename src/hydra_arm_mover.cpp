@@ -47,6 +47,9 @@ HydraArmMover::HydraArmMover(ros::NodeHandle pnh)
   pnh.param<int>( "gripper_open_button", gripper_open_button_, 12); // right hydra button 4
   pnh.param<int>( "gripper_close_button", gripper_close_button_, 14); // right hydra button 2
 
+  pnh.param<double>( "arm_linear_scale", arm_linear_scale_, 0.3);
+  pnh.param<double>( "arm_angular_scale", arm_angular_scale_, 0.3);
+
   pnh.param<double>("gripper_open_pos", gripper_open_pos_, 0.09);
   pnh.param<double>("gripper_close_pos", gripper_close_pos_, 0.0);
   pnh.param<double>("gripper_max_effort", gripper_max_effort_, 28.0);
@@ -110,15 +113,27 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
 
   ros::Time now(ros::Time::now());
 
+  KDL::Frame pose;
   tf::StampedTransform transform;
   geometry_msgs::PoseStamped stamped;
   stamped.pose.orientation.w = 1.0;
-  stamped.header.stamp = now - ros::Duration(0.2);
+  stamped.header.stamp = now - ros::Duration(0.1);
   stamped.header.frame_id = target_frame_id_;
-  tf_.transformPose(root_frame_id_, stamped, stamped);
+
+  try
+  {
+    tf_.transformPose(root_frame_id_, stamped, stamped);
+  } 
+  catch (tf2::ExtrapolationException except)
+  {
+    ROS_ERROR_STREAM_THROTTLE(1.0, "HydraArmMover: transform exception " << except.what());
+    // try again, this time adding a little bit more delay
+    stamped.header.stamp = now - ros::Duration(0.25);
+    tf_.transformPose(root_frame_id_, stamped, stamped);
+  }
+
   tf::Stamped<tf::Pose> tf_pose_stamped;
   tf::poseStampedMsgToTF(stamped, tf_pose_stamped);
-  KDL::Frame pose;
   tf::poseTFToKDL(tf_pose_stamped,pose);
 
 
@@ -138,12 +153,14 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
     double dt = (now - last_update_time_).toSec();
     if (dt<=1e-3) 
       dt=1e-3;
-    cmd.linear.x = twist(0) / dt;
-    cmd.linear.y = twist(1) / dt;
-    cmd.linear.z = twist(2) / dt;
-    cmd.angular.x = twist(3) / dt;
-    cmd.angular.y = twist(4) / dt;
-    cmd.angular.z = twist(5) / dt;
+    double linear_scale = arm_linear_scale_ / dt;
+    cmd.linear.x = twist(0) * linear_scale;
+    cmd.linear.y = twist(1) * linear_scale;
+    cmd.linear.z = twist(2) * linear_scale;
+    double angular_scale = arm_angular_scale_ / dt;
+    cmd.angular.x = twist(3) * angular_scale;
+    cmd.angular.y = twist(4) * angular_scale;
+    cmd.angular.z = twist(5) * angular_scale;
   }
   if (deadman || last_deadman_)
   {

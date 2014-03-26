@@ -66,6 +66,11 @@ private:
   KDL::Frame last_pose_;
   bool have_last_pose_;
 
+  /** How to scale hydra movements into arm movements
+   * 0.5 = arm moves half the rate of the hydra
+   */
+  double arm_angular_scale_, arm_linear_scale_;  
+
   /// previous state of deadman button
   bool last_deadman_; 
 
