@@ -83,7 +83,7 @@ private:
   ros::Time last_update_time_;
 
   /// index of deadman button to used for moving arm
-  int deadman_button_;
+  int deadman_button_, alt_deadman_button_;  
 
   typedef actionlib::SimpleActionClient<control_msgs::GripperCommandAction> GripperClient;
   boost::shared_ptr< GripperClient > gripper_client_;

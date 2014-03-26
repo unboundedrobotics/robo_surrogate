@@ -44,11 +44,13 @@ HydraArmMover::HydraArmMover(ros::NodeHandle pnh)
   pnh.param<std::string>( "root_frame", root_frame_id_, "base_link");
   pnh.param<double>( "update_period", update_period_, 0.1);
   pnh.param<int>( "deadman_button", deadman_button_, 11); // right top trigger on hydra
+  pnh.param<int>( "alt_deadman_button", alt_deadman_button_, 9); // right bottom trigger on hydra
+
   pnh.param<int>( "gripper_open_button", gripper_open_button_, 12); // right hydra button 4
   pnh.param<int>( "gripper_close_button", gripper_close_button_, 14); // right hydra button 2
 
-  pnh.param<double>( "arm_linear_scale", arm_linear_scale_, 0.6);
-  pnh.param<double>( "arm_angular_scale", arm_angular_scale_, 0.3);
+  pnh.param<double>( "arm_linear_scale", arm_linear_scale_, 1.0);
+  pnh.param<double>( "arm_angular_scale", arm_angular_scale_, 0.6);
 
   pnh.param<double>("gripper_open_pos", gripper_open_pos_, 0.09);
   pnh.param<double>("gripper_close_pos", gripper_close_pos_, 0.0);
@@ -93,6 +95,11 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   if (joy_msg->buttons.size() <= deadman_button_)
   {
     ROS_ERROR_ONCE("Deadman button index is out of bounds!");
+    return;
+  }
+  if (joy_msg->buttons.size() <= alt_deadman_button_)
+  {
+    ROS_ERROR_ONCE("Alternate deadman button index is out of bounds!");
     return;
   }
   if (joy_msg->buttons.size() <= gripper_open_button_)
@@ -148,7 +155,7 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
    * If deadman was just released, send zero Twist command forces arm to stop quickly
    * Otherwise, calculate difference in current and last hydra pose and send it as twist
    */
-  bool deadman = joy_msg->buttons[deadman_button_];
+  bool deadman = joy_msg->buttons[deadman_button_] || joy_msg->buttons[alt_deadman_button_];
   KDL::Twist twist;
   for (int ii=0;ii<6;++ii) twist(ii) = 0.0;
 
