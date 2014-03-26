@@ -42,12 +42,12 @@ HydraArmMover::HydraArmMover(ros::NodeHandle pnh)
 {
   pnh.param<std::string>( "tracked_frame", target_frame_id_, "hydra_right_pivot");
   pnh.param<std::string>( "root_frame", root_frame_id_, "base_link");
-  pnh.param<double>( "update_period", update_period_, 0.05);
+  pnh.param<double>( "update_period", update_period_, 0.1);
   pnh.param<int>( "deadman_button", deadman_button_, 11); // right top trigger on hydra
   pnh.param<int>( "gripper_open_button", gripper_open_button_, 12); // right hydra button 4
   pnh.param<int>( "gripper_close_button", gripper_close_button_, 14); // right hydra button 2
 
-  pnh.param<double>( "arm_linear_scale", arm_linear_scale_, 0.3);
+  pnh.param<double>( "arm_linear_scale", arm_linear_scale_, 0.6);
   pnh.param<double>( "arm_angular_scale", arm_angular_scale_, 0.3);
 
   pnh.param<double>("gripper_open_pos", gripper_open_pos_, 0.09);
@@ -59,7 +59,10 @@ HydraArmMover::HydraArmMover(ros::NodeHandle pnh)
   gripper_closed_ = false;
 
   // We have not recv'ed a joystick pose from TF just yet
-  have_last_pose_;
+  have_last_pose_ = false;
+
+  // Deadman has not been pushed
+  last_deadman_counter_ = 0;
   
   /* Gripper action setup */
   gripper_client_.reset( new GripperClient("gripper_controller/gripper_action", true) );
@@ -145,25 +148,47 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
    * If deadman was just released, send zero Twist command forces arm to stop quickly
    * Otherwise, calculate difference in current and last hydra pose and send it as twist
    */
-  geometry_msgs::Twist cmd; 
   bool deadman = joy_msg->buttons[deadman_button_];
+  KDL::Twist twist;
+  for (int ii=0;ii<6;++ii) twist(ii) = 0.0;
+
   if (deadman && have_last_pose_)
   {
-    KDL::Twist twist = KDL::diff(last_pose_, pose, 1.0);
+    twist = KDL::diff(last_pose_, pose, 1.0);
     double dt = (now - last_update_time_).toSec();
     if (dt<=1e-3) 
       dt=1e-3;
+
     double linear_scale = arm_linear_scale_ / dt;
-    cmd.linear.x = twist(0) * linear_scale;
-    cmd.linear.y = twist(1) * linear_scale;
-    cmd.linear.z = twist(2) * linear_scale;
+    twist(0) = twist(0) * linear_scale;
+    twist(1) = twist(1) * linear_scale;
+    twist(2) = twist(2) * linear_scale;
     double angular_scale = arm_angular_scale_ / dt;
-    cmd.angular.x = twist(3) * angular_scale;
-    cmd.angular.y = twist(4) * angular_scale;
-    cmd.angular.z = twist(5) * angular_scale;
+    twist(3) = twist(3) * angular_scale;
+    twist(4) = twist(4) * angular_scale;
+    twist(5) = twist(5) * angular_scale;
   }
-  if (deadman || last_deadman_)
+
+  double filter_coeff = 0.5;
+  for (int ii=0;ii<6;++ii)
   {
+    twist_filtered_(ii) += filter_coeff * (twist(ii) - twist_filtered_(ii));
+  }
+
+  if (last_deadman_counter_ == 0)
+  {
+    for (int ii=0;ii<6;++ii) twist_filtered_(ii) = 0;
+  }
+
+  if (deadman || (last_deadman_counter_>0))
+  {
+    geometry_msgs::Twist cmd; 
+    cmd.linear.x  = twist_filtered_(0);
+    cmd.linear.y  = twist_filtered_(1);
+    cmd.linear.z  = twist_filtered_(2);
+    cmd.angular.x = twist_filtered_(3);
+    cmd.angular.y = twist_filtered_(4);
+    cmd.angular.z = twist_filtered_(5);
     command_pub_.publish(cmd);
   }
 
@@ -191,7 +216,15 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   last_update_time_ = ros::Time::now();
   last_pose_ = pose;
   have_last_pose_ = true;
-  last_deadman_ = deadman;
+
+  if (deadman)
+  {
+    last_deadman_counter_ = 10;
+  }
+  else if (last_deadman_counter_ > 0)
+  {
+    --last_deadman_counter_;
+  }
 }
 
 

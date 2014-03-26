@@ -66,13 +66,16 @@ private:
   KDL::Frame last_pose_;
   bool have_last_pose_;
 
+  /// For filtering purposes
+  KDL::Twist twist_filtered_;
+
   /** How to scale hydra movements into arm movements
    * 0.5 = arm moves half the rate of the hydra
    */
   double arm_angular_scale_, arm_linear_scale_;  
 
-  /// previous state of deadman button
-  bool last_deadman_; 
+  /// counts down since deadman was released
+  int last_deadman_counter_;
 
   tf::TransformListener tf_;
   double update_period_;
