@@ -1,6 +1,7 @@
 /*********************************************************************
 *
 *  Copyright (c) 2013, Willow Garage, Inc.
+*  Copyright (c) 2014, Unbounded Robotics, Inc.
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -63,16 +64,17 @@ private:
   std::string root_frame_id_;
 
   KDL::Frame last_pose_;
+  bool have_last_pose_;
+
+  /// previous state of deadman button
+  bool last_deadman_; 
 
   tf::TransformListener tf_;
   double update_period_;
 
   ros::Time last_update_time_;
 
-  /// index of button to used for moving gripper/arm
-  int move_button_;
-
-  /// index of button used for executing move
+  /// index of deadman button to used for moving arm
   int deadman_button_;
 
   typedef actionlib::SimpleActionClient<control_msgs::GripperCommandAction> GripperClient;
