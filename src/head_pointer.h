@@ -61,6 +61,7 @@ private:
 
   double update_period_;
   int deadman_button_;
+  int alt_deadman_button_;
 };
 
 #endif  // ROBO_SURROGATE_HEAD_POINTER_H_

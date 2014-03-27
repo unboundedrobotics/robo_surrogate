@@ -10,17 +10,18 @@
     <arg name="corner_hz" default="10.0" />
   </include>
 
-  <!--
   <node name="$(anon rviz)" pkg="rviz" type="rviz" required="true" 
         respawn="false" output="screen" args="$(arg rviz_args)">
   </node>
-  -->
 
   <node pkg="tf" type="static_transform_publisher" name="hydra_to_robot_tf_pub" 
         args="$(arg razer_pos) 0 0 0 1 torso_lift_link hydra_base 30"/>
 
   <group if="$(arg start_hydra)">
-    <node name="hydra_arm_mover" pkg="robo_surrogate" type="hydra_arm_mover"/>
+    <node name="hydra_arm_mover" pkg="robo_surrogate" type="hydra_arm_mover">
+      <param name="deadman_button" value="11"/>
+      <param name="alt_deadman_button" value="9"/>
+    </node>
   </group>
  
 </launch>

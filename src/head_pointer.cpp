@@ -40,6 +40,7 @@ HeadPointer::HeadPointer(ros::NodeHandle pnh, std::string action_topic) :
   pnh.param<std::string>("tracked_frame", point_head_goal_.target.header.frame_id, "oculus" );
   pnh.param<std::string>("pointing_frame", point_head_goal_.pointing_frame, "head_mount_kinect_rgb_link");
   pnh.param<int>("deadman_button", deadman_button_, 0);
+  pnh.param<int>("alt_deadman_button", alt_deadman_button_, deadman_button_);
   pnh.param<double>("update_period", update_period_, 0.05);
 
   point_head_goal_.pointing_axis.x = 1;
@@ -72,8 +73,13 @@ void HeadPointer::joyCb( sensor_msgs::JoyConstPtr joy_msg )
     ROS_ERROR_ONCE("Button index for deadman switch is out of bounds!");
     return;
   }
+  if (joy_msg->buttons.size() <= alt_deadman_button_)
+  {
+    ROS_ERROR_ONCE("Button index for alternate deadman switch is out of bounds!");
+    return;
+  }
 
-  if (joy_msg->buttons.at(deadman_button_))
+  if (joy_msg->buttons.at(deadman_button_) || joy_msg->buttons.at(alt_deadman_button_))
   {
     last_update_time_ = ros::Time::now();
     point_head_action_client_.sendGoal(point_head_goal_);

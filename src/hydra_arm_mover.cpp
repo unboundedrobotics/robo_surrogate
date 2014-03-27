@@ -44,7 +44,7 @@ HydraArmMover::HydraArmMover(ros::NodeHandle pnh)
   pnh.param<std::string>( "root_frame", root_frame_id_, "base_link");
   pnh.param<double>( "update_period", update_period_, 0.1);
   pnh.param<int>( "deadman_button", deadman_button_, 11); // right top trigger on hydra
-  pnh.param<int>( "alt_deadman_button", alt_deadman_button_, 9); // right bottom trigger on hydra
+  pnh.param<int>( "alt_deadman_button", alt_deadman_button_, deadman_button_);
 
   pnh.param<int>( "gripper_open_button", gripper_open_button_, 12); // right hydra button 4
   pnh.param<int>( "gripper_close_button", gripper_close_button_, 14); // right hydra button 2
