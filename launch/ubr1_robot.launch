@@ -1,6 +1,9 @@
 <launch>
 
   <include file="$(find robo_surrogate)/launch/include/head_pointer.launch.xml"/>
+
+  <!-- New cartesian twist controller takes care of this
   <include file="$(find robo_surrogate)/launch/include/arm_mover.launch.xml"/>
+  -->  
 
 </launch>
