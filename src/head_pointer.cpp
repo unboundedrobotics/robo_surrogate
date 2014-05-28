@@ -79,6 +79,9 @@ void HeadPointer::joyCb( sensor_msgs::JoyConstPtr joy_msg )
     return;
   }
 
+  ROS_ERROR_ONCE("Button index for alternate deadman switch is", alt_deadman_button_);
+
+
   if (joy_msg->buttons.at(deadman_button_) || joy_msg->buttons.at(alt_deadman_button_))
   {
     last_update_time_ = ros::Time::now();

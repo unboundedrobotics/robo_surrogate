@@ -127,7 +127,7 @@ void HydraArmMover::joyCb(sensor_msgs::JoyConstPtr joy_msg)
   tf::StampedTransform transform;
   geometry_msgs::PoseStamped stamped;
   stamped.pose.orientation.w = 1.0;
-  stamped.header.stamp = now - ros::Duration(0.1);
+  stamped.header.stamp = ros::Time(0); //now - ros::Duration(0.1);
   stamped.header.frame_id = target_frame_id_;
 
   try

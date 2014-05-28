@@ -9,6 +9,7 @@
     <param name="pointing_frame" value="head_camera_rgb_frame"/>
     <param name="update_period" value="0.1"/>
     <param name="deadman_button" value="$(arg deadman_button)"/>
+    <param name="alt_deadman_button" value="$(arg alt_deadman_button)"/>
     <remap from="joy" to="hydra_joy"/>
   </node>
 
