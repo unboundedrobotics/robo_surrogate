@@ -49,7 +49,7 @@ HeadPointer::HeadPointer(ros::NodeHandle pnh, std::string action_topic) :
 
   point_head_goal_.target.point.x = 2;
   point_head_goal_.target.point.y = 0;
-  point_head_goal_.target.point.z = 0;
+  point_head_goal_.target.point.z = -0.5;
 
   point_head_goal_.max_velocity = 1.0;
   point_head_goal_.min_duration = ros::Duration(update_period_ * 3);
