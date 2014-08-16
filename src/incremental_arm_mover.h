@@ -31,37 +31,39 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-#ifndef ROBO_SURROGATE_HEAD_POINTER_H_
-#define ROBO_SURROGATE_HEAD_POINTER_H_
+#ifndef ROBO_SURROGATE_INCREMENTAL_ARM_MOVER_H_
+#define ROBO_SURROGATE_INCREMENTAL_ARM_MOVER_H_
 
 #include <ros/ros.h>
-
-#include <control_msgs/PointHeadAction.h>
 #include <sensor_msgs/Joy.h>
+#include <kdl/frames.hpp>
+#include <tf/transform_listener.h>
 
-#include <actionlib/client/simple_action_client.h>
-
-class HeadPointer
+class IncrementalArmMover
 {
-  typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointHeadActionClient;
-
 public:
-  HeadPointer( ros::NodeHandle pnh, std::string action_topic );
-  virtual ~HeadPointer();
+  IncrementalArmMover(ros::NodeHandle pnh);
+  virtual ~IncrementalArmMover();
 
 private:
-  void joyCb( sensor_msgs::JoyConstPtr joy_msg );
-
-  PointHeadActionClient point_head_action_client_;
-  control_msgs::PointHeadGoal point_head_goal_;
+  void joyCb(sensor_msgs::JoyConstPtr joy_msg);
 
   ros::Time last_update_time_;
   ros::NodeHandle nh_;
   ros::Subscriber joy_sub_;
 
-  double update_period_;
+  ros::Publisher command_pub_;
+
+  std::string target_frame_id_;
+  std::string root_frame_id_;
+
+  bool last_deadman_state_;
+  KDL::Frame last_pose_;
+
+  tf::TransformListener tf_;
+
+  double update_freq_;
   int deadman_button_;
-  int alt_deadman_button_;
 };
 
-#endif  // ROBO_SURROGATE_HEAD_POINTER_H_
+#endif // ROBO_SURROGATE_INCREMENTAL_ARM_MOVER_H_

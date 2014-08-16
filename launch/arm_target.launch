@@ -1,0 +1,7 @@
+<launch>
+  <node ns="arm_pre_mover" name="state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" >
+    <param name="publish_frequency" value="50.0"/>
+    <param name="tf_prefix" value="arm_target"/>
+  </node>
+  <node ns="arm_target" name="torso_publisher" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 torso_lift_link arm_target/torso_lift_link 100"/>
+</launch>

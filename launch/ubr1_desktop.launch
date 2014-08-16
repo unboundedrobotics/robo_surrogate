@@ -7,6 +7,7 @@
   <include if="$(arg start_hydra)" file="$(find razer_hydra)/launch/hydra.launch">
     <arg name="publish_tf" value="true"/>
     <arg name="polling_ms" value="30"/>
+    <arg name="corner_hz" default="10.0" />
   </include>
 
   <node name="$(anon rviz)" pkg="rviz" type="rviz" required="true" 
@@ -15,5 +16,12 @@
 
   <node pkg="tf" type="static_transform_publisher" name="hydra_to_robot_tf_pub" 
         args="$(arg razer_pos) 0 0 0 1 torso_lift_link hydra_base 30"/>
+
+  <group if="$(arg start_hydra)">
+    <node name="hydra_arm_mover" pkg="robo_surrogate" type="hydra_arm_mover">
+      <param name="deadman_button" value="11"/>
+      <param name="alt_deadman_button" value="9"/>
+    </node>
+  </group>
  
 </launch>

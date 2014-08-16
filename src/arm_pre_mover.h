@@ -31,37 +31,64 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-#ifndef ROBO_SURROGATE_HEAD_POINTER_H_
-#define ROBO_SURROGATE_HEAD_POINTER_H_
+#ifndef ROBO_SURROGATE_ARM_PRE_MOVER_H_
+#define ROBO_SURROGATE_ARM_PRE_MOVER_H_
 
 #include <ros/ros.h>
-
-#include <control_msgs/PointHeadAction.h>
 #include <sensor_msgs/Joy.h>
+#include <kdl/frames.hpp>
+#include <tf/transform_listener.h>
+#include <sensor_msgs/JointState.h>
+#include <robo_surrogate/ArmMove.h>
+//#include <geometry_msgs/PoseStamped.h>
 
-#include <actionlib/client/simple_action_client.h>
+#include <kdl/chain.hpp>
+#include <kdl/chainjnttojacsolver.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <kdl/chainiksolvervel_wdls.hpp>
 
-class HeadPointer
+#include <kdl/frames.hpp>
+#include <vector>
+
+class ArmPreMover
 {
-  typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointHeadActionClient;
-
 public:
-  HeadPointer( ros::NodeHandle pnh, std::string action_topic );
-  virtual ~HeadPointer();
+  ArmPreMover(ros::NodeHandle pnh);
+  virtual ~ArmPreMover();
 
 private:
-  void joyCb( sensor_msgs::JoyConstPtr joy_msg );
-
-  PointHeadActionClient point_head_action_client_;
-  control_msgs::PointHeadGoal point_head_goal_;
+  void moveCb(robo_surrogate::ArmMoveConstPtr move_msg);
+  void jointStateCb(sensor_msgs::JointStateConstPtr msg);
 
   ros::Time last_update_time_;
-  ros::NodeHandle nh_;
-  ros::Subscriber joy_sub_;
+  ros::Time last_move_update_time_;
 
+  ros::NodeHandle nh_;
+  ros::Subscriber joint_states_sub_;
+
+  /** Subscription to another node that generates twists + deadman/move inputs
+   * This node that this node will accumulate values and execute moves
+   * This allows different input devices (mouse, ps2, razor hydra) to move arm.
+   */
+  ros::Subscriber move_sub_;
+
+  ros::Publisher target_joint_states_pub_;
+  ros::Publisher follow_trajectory_goal_pub_;
+
+  std::vector<double> current_joint_positions_;
+  sensor_msgs::JointState target_joint_states_;
+  
+  KDL::Chain kdl_chain_;
+  boost::shared_ptr<KDL::ChainIkSolverVel_wdls> solver_;
+  KDL::Jacobian jacobian_;
+  KDL::JntArray jnt_pos_;
+  KDL::JntArray jnt_vel_;
+
+  /// 
   double update_period_;
-  int deadman_button_;
-  int alt_deadman_button_;
+ 
+  bool initialized_;
+  bool have_current_joint_state_;
 };
 
-#endif  // ROBO_SURROGATE_HEAD_POINTER_H_
+#endif // ROBO_SURROGATE_ARM_PRE_MOVER_H_
